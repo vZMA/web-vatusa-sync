@@ -24,38 +24,39 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 	const users = await User.find({vis: false, deleted: false}).lean();
 
 	delete data.testing;
+	const vatusaRosterData = Object.values(data);
 
 	const vatusaObject = {};
 	const zabObject = {};
 
-	for(const v of Object.values(data)) {
-		vatusaObject[v.cid] = v;
+	for(const user of vatusaRosterData) {
+		vatusaObject[user.cid] = user;
 	}
 
-	for(const v of users) {
-		zabObject[v.cid] = v;
+	for(const user of users) {
+		zabObject[user.cid] = user;
 	}
 	
 	const localRoster = users.map(user => user.cid);
-	const vatusaRoster = Object.values(data).map(user => user.cid);
+	const vatusaRoster = vatusaRosterData.map(user => user.cid);
 
 	const toBeAdded = vatusaRoster.filter(cid => !localRoster.includes(cid));
 	const toBeDeleted = localRoster.filter(cid => !vatusaRoster.includes(cid));
 
-	usedOi = users.map(user => user.oi);
+	usedOperatingInitials = users.map(user => user.oi);
 
 	const addUser = async cid => {
 		const userData = vatusaObject[cid];
 
-		const oi = generateOi(userData.fname, userData.lname);
+		const operatingInitials = generateOperatingInitials(userData.fname, userData.lname);
 
-		if(!oi) {
+		if(!operatingInitials) {
 			console.log(`Couldn't generate operating initials for controller ${userData.fname} ${userData.lname}.`);
 			if(toBeAdded.length) {
 				addUser(toBeAdded.shift());
 			}
 		} else {
-			usedOi.push(oi);
+			usedOperatingInitials.push(operatingInitials);
 
 			await User.create({
 				cid: userData.cid,
@@ -63,12 +64,12 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 				lname: userData.lname,
 				email: null,
 				rating: userData.rating,
-				oi,
+				oi: operatingInitials,
 				broadcast: false,
 				vis: false
 			});
 
-			console.log(`Added user ${userData.fname} ${userData.lname} (${userData.cid} - ${oi}).`)
+			console.log(`Added user ${userData.fname} ${userData.lname} (${userData.cid} - ${operatingInitials}).`)
 
 			if(toBeAdded.length) {
 				addUser(toBeAdded.shift());
@@ -90,13 +91,13 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 		
 		const user = await User.findOne({cid});
 		
-		const oi = user.oi
+		const operatingInitials = user.oi
 		
 		user.oi = null;
 		
 		await user.delete();
 
-		console.log(`Removed user ${user.fname} ${user.lname} (${user.cid} - ${oi}).`);
+		console.log(`Removed user ${user.fname} ${user.lname} (${user.cid} - ${operatingInitials}).`);
 
 		if(toBeDeleted.length) {
 			deleteController(toBeDeleted.shift());
@@ -114,19 +115,26 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 
 });
 
-const generateOi = (fname, lname) => {
-	let oi;
+/**
+ * Generates a pair of operating initials for a new controller.
+ * @param fname User's first name.
+ * @param lname User's last name.
+ * @return A two character set of operating initials (e.g. RA).
+ */
+const generateOperatingInitials = (fname, lname) => {
+	let operatingInitials;
+	const MAX_TRIES = 10;
 
-	oi = `${fname.charAt(0).toUpperCase()}${lname.charAt(0).toUpperCase()}`;
+	operatingInitials = `${fname.charAt(0).toUpperCase()}${lname.charAt(0).toUpperCase()}`;
 	
-	if(!usedOi.includes(oi)) {
-		return oi;
+	if(!usedOperatingInitials.includes(operatingInitials)) {
+		return operatingInitials;
 	}
 	
-	oi = `${lname.charAt(0).toUpperCase()}${fname.charAt(0).toUpperCase()}`;
+	operatingInitials = `${lname.charAt(0).toUpperCase()}${fname.charAt(0).toUpperCase()}`;
 	
-	if(!usedOi.includes(oi)) {
-		return oi;
+	if(!usedOperatingInitials.includes(operatingInitials)) {
+		return operatingInitials;
 	}
 
 	const chars = `${lname.toUpperCase()}${fname.toUpperCase()}`;
@@ -134,28 +142,34 @@ const generateOi = (fname, lname) => {
 	let tries = 0;
 
 	do {
-		oi = random(chars, 2);
+		operatingInitials = random(chars, 2);
 		tries++;
-	} while(usedOi.includes(oi) || tries > 10);
+	} while(usedOperatingInitials.includes(operatingInitials) || tries > MAX_TRIES);
 
-	if(!usedOi.includes(oi)) {
-		return oi;
+	if(!usedOperatingInitials.includes(operatingInitials)) {
+		return operatingInitials;
 	}
 
 	tries = 0;
 
 	do {
-		oi = random('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 2);
+		operatingInitials = random('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 2);
 		tries++;
-	} while(usedOi.includes(oi) || tries > 10);
+	} while(usedOperatingInitials.includes(operatingInitials) || tries > MAX_TRIES);
 
-	if(!usedOi.includes(oi)) {
-		return oi;
+	if(!usedOperatingInitials.includes(operatingInitials)) {
+		return operatingInitials;
 	}
 
 	return false;
 }
 
+/**
+ * Selects a number of random characters from a given string.
+ * @param str String of characters to select from.
+ * @param len Number of characters to select.
+ * @return String of selected characters.
+ */
 const random = (str, len) => {
 	let ret = '';
 	for (let i = 0; i < len; i++) {
