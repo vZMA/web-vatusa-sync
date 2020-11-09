@@ -1,4 +1,4 @@
-import {m as mongoose} from 'mongoose';
+import mongoose from 'mongoose';
 import softDelete from 'mongoose-delete';
 
 const userSchema = new mongoose.Schema({
@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
 	oi: String,
 	broadcast: Boolean,
 	vis: Boolean,
+	roles: Array,
+	certifications: Array
 }, {
 	timestamps: true,
 });

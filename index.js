@@ -10,7 +10,7 @@ mongoose.connect(process.env.MONGO_URI || '', { useNewUrlParser: true, useCreate
 const db = mongoose.connection;
 db.once('open', () => console.log('Successfully connected to MongoDB'));
 
-let usedOi;
+let usedOperatingInitials;
  
 schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 	console.log(`Syncing Roster...`);
