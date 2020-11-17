@@ -8,49 +8,54 @@ dotenv.config();
 
 mongoose.connect(process.env.MONGO_URI || '', { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true });
 const db = mongoose.connection;
-db.once('open', () => console.log('Successfully connected to MongoDB'));
+db.once('open', () => {
+	console.log('Successfully connected to MongoDB')
+	syncRoster();
+	schedule.scheduleJob('*/30 * * * *', syncRoster);
+});
 
 let usedOperatingInitials;
- 
-schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
+
+const syncRoster = async () => {
+
 	console.log(`Syncing Roster...`);
 	const jwt = JSON.parse(process.env.VATUSA_API_JWT);
-
+	
 	const { data } = await axios.get('https://api.vatusa.net/v2/facility/ZAB/roster/', {
 		headers: {
 			'Authorization': `Basic ${jwt.k}`
 		}
 	}).catch(console.error);
-
+	
 	const users = await User.find({vis: false, deleted: false}).lean();
-
+	
 	delete data.testing;
 	const vatusaRosterData = Object.values(data);
-
+	
 	const vatusaObject = {};
 	const zabObject = {};
-
+	
 	for(const user of vatusaRosterData) {
 		vatusaObject[user.cid] = user;
 	}
-
+	
 	for(const user of users) {
 		zabObject[user.cid] = user;
 	}
 	
 	const localRoster = users.map(user => user.cid);
 	const vatusaRoster = vatusaRosterData.map(user => user.cid);
-
+	
 	const toBeAdded = vatusaRoster.filter(cid => !localRoster.includes(cid));
 	const toBeDeleted = localRoster.filter(cid => !vatusaRoster.includes(cid));
-
+	
 	usedOperatingInitials = users.map(user => user.oi);
-
+	
 	const addUser = async cid => {
 		const userData = vatusaObject[cid];
-
+	
 		const operatingInitials = generateOperatingInitials(userData.fname, userData.lname);
-
+	
 		if(!operatingInitials) {
 			console.log(`Couldn't generate operating initials for controller ${userData.fname} ${userData.lname}.`);
 			if(toBeAdded.length) {
@@ -58,7 +63,7 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 			}
 		} else {
 			usedOperatingInitials.push(operatingInitials);
-
+	
 			await User.create({
 				cid: userData.cid,
 				fname: userData.fname,
@@ -69,9 +74,9 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 				broadcast: false,
 				vis: false
 			});
-
+	
 			console.log(`Added user ${userData.fname} ${userData.lname} (${userData.cid} - ${operatingInitials}).`)
-
+	
 			if(toBeAdded.length) {
 				addUser(toBeAdded.shift());
 			} else {
@@ -79,15 +84,15 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 			}
 		}
 	}
-
+	
 	console.log(`Found ${toBeAdded.length} controllers to be added.`);
-
+	
 	if(toBeAdded.length) {
 		addUser(toBeAdded.shift());
 	}
-
+	
 	console.log(`Found ${toBeDeleted.length} controllers to be removed.`);
-
+	
 	const deleteController = async cid => {
 		
 		const user = await User.findOne({cid});
@@ -97,24 +102,24 @@ schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 		user.oi = null;
 		
 		await user.delete();
-
+	
 		console.log(`Removed user ${user.fname} ${user.lname} (${user.cid} - ${operatingInitials}).`);
-
+	
 		if(toBeDeleted.length) {
 			deleteController(toBeDeleted.shift());
 		} else {
 			console.log(`Controllers removed.`);
 		}
 	}
-
+	
 	if(toBeDeleted.length) {
 		deleteController(toBeDeleted.shift());
 	}	
-
+	
 	
 	console.log(`...Done!`);
-
-});
+}
+ 
 
 /**
  * Generates a pair of operating initials for a new controller.
