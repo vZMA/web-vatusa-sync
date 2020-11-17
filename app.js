@@ -14,10 +14,11 @@ let usedOperatingInitials;
  
 schedule.scheduleJob('*/30 * * * *', async () => { // run every 30 minutes
 	console.log(`Syncing Roster...`);
+	const jwt = JSON.parse(process.env.VATUSA_API_JWT);
 
 	const { data } = await axios.get('https://api.vatusa.net/v2/facility/ZAB/roster/', {
 		headers: {
-			'Authorization': `Basic ${process.env.VATUSA_API_JWK}`
+			'Authorization': `Basic ${jwt.k}`
 		}
 	}).catch(console.error);
 
