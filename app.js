@@ -21,13 +21,13 @@ const syncRoster = async () => {
 	console.log(`Syncing Roster...`);
 	const jwt = JSON.parse(process.env.VATUSA_API_JWT);
 	
-	const { data } = await axios.get('https://api.vatusa.net/v2/facility/ZAB/roster/', {
+	const { data } = await axios.get('https://api.vatusa.net/v2/facility/ZAB/roster/both', {
 		headers: {
 			'Authorization': `Basic ${jwt.k}`
 		}
 	}).catch(console.error);
 	
-	const users = await User.find({vis: false, deleted: false}).lean();
+	const users = await User.find({deleted: false}).lean();
 	
 	delete data.testing;
 	const vatusaRosterData = Object.values(data);
@@ -63,7 +63,7 @@ const syncRoster = async () => {
 			}
 		} else {
 			usedOperatingInitials.push(operatingInitials);
-	
+			const visitor = userData.membership == "visit" ? true : false;
 			await User.create({
 				cid: userData.cid,
 				fname: userData.fname,
@@ -72,7 +72,7 @@ const syncRoster = async () => {
 				rating: userData.rating,
 				oi: operatingInitials,
 				broadcast: false,
-				vis: false
+				vis: visitor
 			});
 	
 			console.log(`Added user ${userData.fname} ${userData.lname} (${userData.cid} - ${operatingInitials}).`)
