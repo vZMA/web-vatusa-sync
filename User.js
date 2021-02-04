@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import softDelete from 'mongoose-delete';
 
-const userSchema = new mongoose.Schema({
+const userSchema = new m.Schema({
 	cid: Number,
 	fname: String,
 	lname: String,
@@ -9,9 +9,18 @@ const userSchema = new mongoose.Schema({
 	rating: Number,
 	oi: String,
 	broadcast: Boolean,
+	member: Boolean,
 	vis: Boolean,
+	discordInfo: {
+		clientId: String,
+		accessToken: String,
+		refreshToken: String,
+		tokenType: String,
+		expires: Date,
+	},
 	roles: Array,
-	certifications: Array
+	certifications: Array,
+	trainingMilestones: Array
 }, {
 	timestamps: true,
 });
