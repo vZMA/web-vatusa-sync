@@ -1,185 +1,98 @@
-import User from './User.js';
 import axios from 'axios';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import schedule from 'node-schedule';
+import { performance } from 'perf_hooks';
 
 dotenv.config();
 
-mongoose.connect(process.env.MONGO_URI || '', { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true });
-const db = mongoose.connection;
-db.once('open', () => {
-	console.log('Successfully connected to MongoDB')
-	syncRoster();
-	schedule.scheduleJob('*/30 * * * *', syncRoster);
-});
-
-let usedOperatingInitials;
-
 const syncRoster = async () => {
 
-	console.log(`Syncing Roster...`);
-	const jwt = JSON.parse(process.env.VATUSA_API_JWT);
-	
-	const { data } = await axios.get('https://api.vatusa.net/v2/facility/ZAB/roster/both', {
+	const zabApi = axios.create({
+		baseURL: process.env.ZAB_API_URL,
 		headers: {
-			'Authorization': `Basic ${jwt.k}`
+			'Authorization': `Bearer ${process.env.ZAB_API_KEY}`
 		}
-	}).catch(console.error);
+	})
+
+	const start = performance.now();
+
+	console.log(`Syncing Roster...`);
 	
-	const users = await User.find({deleted: false}).lean();
-	
-	delete data.testing;
-	const vatusaRosterData = Object.values(data);
+	const { data: vatusaData } = await axios.get(`https://api.vatusa.net/v2/facility/ZAB/roster/both?apikey=${process.env.VATUSA_API_KEY}`).catch(console.error);
+	const { data: zabData } = await axios.get(`${process.env.ZAB_API_URL}/controller`);
+	const allZabControllers = [...zabData.data.home, ...zabData.data.visiting];
+	const { data: zabRoles } = await axios.get(`${process.env.ZAB_API_URL}/controller/role`);
+	const availableRoles = zabRoles.data.map(role => role.code);
+
+	const zabControllers = allZabControllers.map(c => c.cid); // everyone in db
+	const zabMembers = allZabControllers.filter(c => c.member).map(c => c.cid); // only member: true
+	const zabNonMembers = allZabControllers.filter(c => !c.member).map(c => c.cid); // only member: false
+	const zabHomeControllers = zabData.data.home.map(c => c.cid); // only vis: false
+	const zabVisitingControllers = zabData.data.visiting.map(c => c.cid); // only: vis: true
+
+	const vatusaControllers = vatusaData.data.map(c => c.cid); // all controllers returned by VATUSA
+	const vatusaHomeControllers = vatusaData.data.filter(c => c.membership === 'home').map(c => c.cid); // only membership: home
+	const vatusaVisitingControllers = vatusaData.data.filter(c => c.membership !== 'home').map(c => c.cid); // only membership: !home
+
+	const toBeAdded = vatusaControllers.filter(cid => !zabControllers.includes(cid));
+	const makeNonMember = zabMembers.filter(cid => !vatusaControllers.includes(cid));
+	const makeMember = zabNonMembers.filter(cid => vatusaControllers.includes(cid));
+	const makeVisitor = zabHomeControllers.filter(cid => vatusaVisitingControllers.includes(cid));
+	const makeHome = zabVisitingControllers.filter(cid => vatusaHomeControllers.includes(cid));
+
+	console.log(`Members to be added: ${toBeAdded.join(', ')}`);
+	console.log(`Members to be removed: ${makeNonMember.join(', ')}`);
+	console.log(`Controllers to be made member: ${makeMember.join(', ')}`);
+	console.log(`Controllers to be made visitor: ${makeVisitor.join(', ')}`);
+	console.log(`Controllers to be made home controller: ${makeHome.join(', ')}`);
 	
 	const vatusaObject = {};
-	const zabObject = {};
-	
-	for(const user of vatusaRosterData) {
+
+	for(const user of vatusaData.data) {
 		vatusaObject[user.cid] = user;
 	}
-	
-	for(const user of users) {
-		zabObject[user.cid] = user;
-	}
-	
-	const localRoster = users.map(user => user.cid);
-	const vatusaRoster = vatusaRosterData.map(user => user.cid);
-	
-	const toBeAdded = vatusaRoster.filter(cid => !localRoster.includes(cid));
-	const toBeDeleted = localRoster.filter(cid => !vatusaRoster.includes(cid));
-	
-	usedOperatingInitials = users.map(user => user.oi);
-	
-	const addUser = async cid => {
-		const userData = vatusaObject[cid];
-	
-		const operatingInitials = generateOperatingInitials(userData.fname, userData.lname);
-	
-		if(!operatingInitials) {
-			console.log(`Couldn't generate operating initials for controller ${userData.fname} ${userData.lname}.`);
-			if(toBeAdded.length) {
-				addUser(toBeAdded.shift());
-			}
-		} else {
-			usedOperatingInitials.push(operatingInitials);
-			const visitor = userData.membership == "visit" ? true : false;
-			await User.create({
-				cid: userData.cid,
-				fname: userData.fname,
-				lname: userData.lname,
-				email: null,
-				rating: userData.rating,
-				oi: operatingInitials,
-				broadcast: false,
-				vis: visitor
-			});
-	
-			console.log(`Added user ${userData.fname} ${userData.lname} (${userData.cid} - ${operatingInitials}).`)
-	
-			if(toBeAdded.length) {
-				addUser(toBeAdded.shift());
-			} else {
-				console.log(`Controllers added.`);
-			}
+
+	for (const cid of toBeAdded) {
+		const user = vatusaObject[cid];
+
+		const assignableRoles = user.roles.filter(role => availableRoles.includes(role.role.toLowerCase())).map(role => role.role.toLowerCase());
+
+		const userData = {
+			fname: user.fname,
+			lname: user.lname,
+			cid: user.cid,
+			rating: user.rating,
+			home: user.facility,
+			email: user.email,
+			broadcast: user.flag_broadcastOptedIn,
+			member: true,
+			vis: (user.membership === 'home') ? false : true,
+			roleCodes: (user.membership === 'home') ? assignableRoles : []
 		}
-	}
-	
-	console.log(`Found ${toBeAdded.length} controllers to be added.`);
-	
-	if(toBeAdded.length) {
-		addUser(toBeAdded.shift());
-	}
-	
-	console.log(`Found ${toBeDeleted.length} controllers to be removed.`);
-	
-	const deleteController = async cid => {
-		
-		const user = await User.findOne({cid});
-		
-		const operatingInitials = user.oi
-		
-		user.oi = null;
-		
-		await user.delete();
-	
-		console.log(`Removed user ${user.fname} ${user.lname} (${user.cid} - ${operatingInitials}).`);
-	
-		if(toBeDeleted.length) {
-			deleteController(toBeDeleted.shift());
-		} else {
-			console.log(`Controllers removed.`);
-		}
-	}
-	
-	if(toBeDeleted.length) {
-		deleteController(toBeDeleted.shift());
-	}	
-	
-	
-	console.log(`...Done!`);
-}
- 
 
-/**
- * Generates a pair of operating initials for a new controller.
- * @param fname User's first name.
- * @param lname User's last name.
- * @return A two character set of operating initials (e.g. RA).
- */
-const generateOperatingInitials = (fname, lname) => {
-	let operatingInitials;
-	const MAX_TRIES = 10;
-
-	operatingInitials = `${fname.charAt(0).toUpperCase()}${lname.charAt(0).toUpperCase()}`;
-	
-	if(!usedOperatingInitials.includes(operatingInitials)) {
-		return operatingInitials;
-	}
-	
-	operatingInitials = `${lname.charAt(0).toUpperCase()}${fname.charAt(0).toUpperCase()}`;
-	
-	if(!usedOperatingInitials.includes(operatingInitials)) {
-		return operatingInitials;
+		await zabApi.post(`/controller/${user.cid}`, userData);
 	}
 
-	const chars = `${lname.toUpperCase()}${fname.toUpperCase()}`;
-
-	let tries = 0;
-
-	do {
-		operatingInitials = random(chars, 2);
-		tries++;
-	} while(usedOperatingInitials.includes(operatingInitials) || tries > MAX_TRIES);
-
-	if(!usedOperatingInitials.includes(operatingInitials)) {
-		return operatingInitials;
+	for (const cid of makeMember) {
+		await zabApi.put(`/controller/${cid}/member`, {member: true});
 	}
 
-	tries = 0;
-
-	do {
-		operatingInitials = random('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 2);
-		tries++;
-	} while(usedOperatingInitials.includes(operatingInitials) || tries > MAX_TRIES);
-
-	if(!usedOperatingInitials.includes(operatingInitials)) {
-		return operatingInitials;
+	for (const cid of makeNonMember) {
+		await zabApi.put(`/controller/${cid}/member`, {member: false});
 	}
 
-	return false;
+	for (const cid of makeVisitor) {
+		await zabApi.put(`/controller/${cid}/visit`, {vis: true});
+	}
+
+	for (const cid of makeHome) {
+		await zabApi.put(`/controller/${cid}/visit`, {vis: false});
+	}
+	
+	console.log(`...Done!\nFinished in ${Math.round(performance.now() - start)/1000}s\n---`);
 }
 
-/**
- * Selects a number of random characters from a given string.
- * @param str String of characters to select from.
- * @param len Number of characters to select.
- * @return String of selected characters.
- */
-const random = (str, len) => {
-	let ret = '';
-	for (let i = 0; i < len; i++) {
-		ret = `${ret}${str.charAt(Math.floor(Math.random() * str.length))}`;
-	}
-	return ret;
-}
+(() => {
+	syncRoster();
+	schedule.scheduleJob('*/10 * * * *', syncRoster);
+})();
