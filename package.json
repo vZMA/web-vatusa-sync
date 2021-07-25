@@ -4,13 +4,15 @@
 	"main": "index.js",
 	"type": "module",
 	"author": "Albuquerque ARTCC",
-  	"contributors": ["Austin Robison"],
+	"contributors": [
+		"Alexandra Robison"
+	],
 	"dependencies": {
 		"axios": "^0.21.1",
-		"dotenv": "^8.2.0",
-		"mongoose": "^5.11.9",
-		"mongoose-delete": "^0.5.2",
-		"node-schedule": "^1.3.2"
+		"dotenv": "^10.0.0",
+		"mongoose": "^5.13.3",
+		"mongoose-delete": "^0.5.3",
+		"node-schedule": "^2.0.0"
 	},
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
