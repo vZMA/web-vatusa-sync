@@ -10,7 +10,7 @@ const syncRoster = async () => {
 	const zabApi = axios.create({
 		baseURL: process.env.ZAB_API_URL,
 		headers: {
-			'Authorization': `Bearer ${process.env.ZAB_API_KEY}`
+			'Authorization': `Bearer ${process.env.ZMA_API_KEY}`
 		}
 	})
 
@@ -18,7 +18,7 @@ const syncRoster = async () => {
 
 	console.log(`Syncing Roster...`);
 	
-	const { data: vatusaData } = await axios.get(`https://api.vatusa.net/v2/facility/ZAB/roster/both?apikey=${process.env.VATUSA_API_KEY}`).catch(console.error);
+	const { data: vatusaData } = await axios.get(`https://api.vatusa.net/v2/facility/ZMA/roster/both?apikey=${process.env.VATUSA_API_KEY}`).catch(console.error);
 	const { data: zabData } = await axios.get(`${process.env.ZAB_API_URL}/controller`);
 	const allZabControllers = [...zabData.data.home, ...zabData.data.visiting];
 	const { data: zabRoles } = await axios.get(`${process.env.ZAB_API_URL}/controller/role`);
