@@ -10,7 +10,7 @@ const syncRoster = async () => {
 	const zabApi = axios.create({
 		baseURL: process.env.ZAB_API_URL,
 		headers: {
-			'Authorization': `Bearer ${process.env.ZMA_API_KEY}`
+			'Authorization': `Bearer ${process.env.ZAB_API_KEY}`
 		}
 	})
 
