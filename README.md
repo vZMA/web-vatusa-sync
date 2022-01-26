@@ -1,5 +1,5 @@
 # Miami ARTCC Roster Sync
-Separate microservice that updates the roster database per VATUSA API.
+Separate microservice that updates the roster database per VATUSA API. 
 
 # License
 
