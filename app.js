@@ -93,10 +93,10 @@ const syncRoster = async () => {
 
 	// Remove deleted items from Training Requests and Training Sessions
 	console.log(`Purging old / deleted training requests`)
-	const trainingData = await axios.get(`${process.env.ZAB_API_URL}/request/purge`);
+	const {data: trainingData} = await axios.get(`${process.env.ZAB_API_URL}/request/purge`);
 		
 	console.log(`Purging deleted training sessions`)
-	const sessionData = await axios.get(`${process.env.ZAB_API_URL}/sessions/purge`);
+	const {data: sessionData} = await axios.get(`${process.env.ZAB_API_URL}/sessions/purge`);
 		
 	console.log(`...Done!\nFinished in ${Math.round(performance.now() - start)/1000}s\n---`);
 }
