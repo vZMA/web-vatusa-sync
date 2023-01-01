@@ -73,6 +73,11 @@ const syncRoster = async () => {
 		await zabApi.post(`/controller/${user.cid}`, userData);
 	}
 
+	for (const cid of vatusaControllers) {
+		const user = vatusaObject[cid];
+		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
+	}
+
 	for (const cid of makeMember) {
 		await zabApi.put(`/controller/${cid}/member`, {member: true});
 	}
