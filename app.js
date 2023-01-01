@@ -93,6 +93,7 @@ const syncRoster = async () => {
 	
 	// For call existing controllers we synchronize the required fields
 	//  TODO: if we choose to sync other fields in the DB from VATSIM, extend it here and add the methods to the api
+	console.log(`Synchornizing existing controller data`);
 	for (const cid of vatusaControllers) {
 		const user = vatusaObject[cid];
 		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
