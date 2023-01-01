@@ -47,12 +47,6 @@ const syncRoster = async () => {
 		vatusaObject[user.cid] = user;
 	}
 
-	// this contains the entire zma roster of controllers in the LOCAL DB
-	const zmauserObject = {};
-	for (const user of zabControllers.data) {
-		zmauserObject[user.cid] = user;
-	}
-	
 	// Those controller that are new in the VATSIM data get added	
 	console.log(`Members to be added: ${toBeAdded.join(', ')}`);
 	for (const cid of toBeAdded) {
@@ -101,13 +95,7 @@ const syncRoster = async () => {
 	//  TODO: if we choose to sync other fields in the DB from VATSIM, extend it here and add the methods to the api
 	for (const cid of vatusaControllers) {
 		const user = vatusaObject[cid];
-		const localuser = zmauserObject[cid];
-	
-		if (user.rating != localuser.rating)
-			{
-			await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
-			console.log(`Cid: ${user.cid} record updated`);
-			}
+		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
 	}
 
 	// Lets take the opportunity to do some DB cleanup
