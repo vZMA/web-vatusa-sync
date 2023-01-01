@@ -40,18 +40,21 @@ const syncRoster = async () => {
 	const makeVisitor = zabHomeControllers.filter(cid => vatusaVisitingControllers.includes(cid));
 	const makeHome = zabVisitingControllers.filter(cid => vatusaHomeControllers.includes(cid));
 
-	console.log(`Members to be added: ${toBeAdded.join(', ')}`);
-	console.log(`Members to be removed: ${makeNonMember.join(', ')}`);
-	console.log(`Controllers to be made member: ${makeMember.join(', ')}`);
-	console.log(`Controllers to be made visitor: ${makeVisitor.join(', ')}`);
-	console.log(`Controllers to be made home controller: ${makeHome.join(', ')}`);
 	
+	// This contains the entire zma roster of controllers from VATSIM
 	const vatusaObject = {};
-
 	for(const user of vatusaData.data) {
 		vatusaObject[user.cid] = user;
 	}
 
+	// this contains the entire zma roster of controllers in the LOCAL DB
+	const zmauserObject = {};
+	for (const user of zabData.data) {
+		zmauserObject[user.cid] = user;
+	}
+	
+	// Those controller that are new in the VATSIM data get added	
+	console.log(`Members to be added: ${toBeAdded.join(', ')}`);
 	for (const cid of toBeAdded) {
 		const user = vatusaObject[cid];
 
@@ -72,28 +75,41 @@ const syncRoster = async () => {
 
 		await zabApi.post(`/controller/${user.cid}`, userData);
 	}
-
-	for (const cid of vatusaControllers) {
-		const user = vatusaObject[cid];
-		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
-	}
-
+	
+	// Classify the updated members accordingly, member, visitor, controller etc.	
+	console.log(`Controllers to be made member: ${makeMember.join(', ')}`);
 	for (const cid of makeMember) {
 		await zabApi.put(`/controller/${cid}/member`, {member: true});
 	}
 
+	console.log(`Members to be made non-member: ${makeNonMember.join(', ')}`);
 	for (const cid of makeNonMember) {
 		await zabApi.put(`/controller/${cid}/member`, {member: false});
 	}
 
+	console.log(`Controllers to be made visitor: ${makeVisitor.join(', ')}`);
 	for (const cid of makeVisitor) {
 		await zabApi.put(`/controller/${cid}/visit`, {vis: true});
 	}
 
+	console.log(`Controllers to be made home controller: ${makeHome.join(', ')}`);
 	for (const cid of makeHome) {
 		await zabApi.put(`/controller/${cid}/visit`, {vis: false});
 	}
 	
+	// For call existing controllers we synchronize the required fields
+	//  TODO: if we choose to sync other fields in the DB from VATSIM, extend it here and add the methods to the api
+	for (const cid of vatusaControllers) {
+		const user = vatusaObject[cid];
+		const localuser = zmauserObject[cid];
+	
+		if (user.rating != localuser.rating)
+			{
+			await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
+			console.log(`Cid: ${user.cid} record updated`);
+			}
+	}
+
 	// Lets take the opportunity to do some DB cleanup
 
 	// Remove deleted items from Training Requests and Training Sessions
