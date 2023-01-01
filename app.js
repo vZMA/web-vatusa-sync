@@ -49,7 +49,7 @@ const syncRoster = async () => {
 
 	// this contains the entire zma roster of controllers in the LOCAL DB
 	const zmauserObject = {};
-	for (const user of zabData.data) {
+	for (const user of zabControllers.data) {
 		zmauserObject[user.cid] = user;
 	}
 	
