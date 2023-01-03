@@ -102,8 +102,8 @@ const syncRoster = async () => {
 	// Lets take the opportunity to do some DB cleanup
 
 	// Remove deleted items from Training Requests and Training Sessions
-	console.log(`Purge non members from the Database`);
-	const {data: removedUsers} = await axios.get(`${process.env.ZAB_API_URL}/controller/purge`);
+	//console.log(`Purge non members from the Database`);
+	//const {data: removedUsers} = await axios.get(`${process.env.ZAB_API_URL}/controller/purge`);
 
 	console.log(`Purging old / deleted training requests`);
 	const {data: trainingData} = await axios.get(`${process.env.ZAB_API_URL}/training/request/purge`);
