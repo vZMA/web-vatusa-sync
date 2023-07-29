@@ -23,6 +23,7 @@ const syncRoster = async () => {
 	const allZabControllers = [...zabData.data.home, ...zabData.data.visiting];
 	const { data: zabRoles } = await axios.get(`${process.env.ZAB_API_URL}/controller/role`);
 	const availableRoles = zabRoles.data.map(role => role.code);
+	const { data: openTrainingSessions } = await axios.get(`${process.env.ZAB_API_URL}/training/session/remind`); // trigger reminder emails
 
 	const zabControllers = allZabControllers.map(c => c.cid); // everyone in db
 	const zabMembers = allZabControllers.filter(c => c.member).map(c => c.cid); // only member: true
