@@ -57,7 +57,7 @@ const syncRoster = async () => {
 
 		const userData = {
 			fname: user.fname,
-			lname: (user.flag_nameprivacy===true) ? user.cid : user.lname,
+			lname: user.flag_nameprivacy ? user.cid : user.lname,
 			cid: user.cid,
 			rating: user.rating,
 			home: user.facility,
@@ -98,20 +98,10 @@ const syncRoster = async () => {
 	for (const cid of vatusaControllers) {
 		const user = vatusaObject[cid];
 		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
-		
-if (user.flag_nameprivacy)
-{
-	console.log('name privcay set');
-	console.log(user.cid);
-	console.log(user.lname);
-	console.log(user.flag_nameprivacy ? user.cid : user.lname);
-}
-
-		const userData = {
-			lname: (user.flag_nameprivacy) ? user.cid : user.lname,		
-		}
-		await zabApi.post(`/controller/${user.cid}`, userData);
 	}
+	for (const cid of vatusaControllers) {
+			const user = vatusaObject[cid];
+		await zabApi.post(`/controller/${user.cid}`, {lname: user.flag_nameprivacy ? user.cid : user.lname});	
 
 	// Lets take the opportunity to do some DB cleanup
 
