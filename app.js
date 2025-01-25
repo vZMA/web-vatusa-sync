@@ -102,7 +102,7 @@ const syncRoster = async () => {
 	for (const cid of vatusaControllers) {
 			const user = vatusaObject[cid];
 		await zabApi.post(`/controller/${user.cid}`, {lname: user.flag_nameprivacy ? user.cid : user.lname});	
-
+	}
 	// Lets take the opportunity to do some DB cleanup
 
 	// Remove deleted items from Training Requests and Training Sessions
