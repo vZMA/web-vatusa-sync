@@ -99,6 +99,14 @@ const syncRoster = async () => {
 		const user = vatusaObject[cid];
 		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
 		
+if (user.flag_nameprivacy)
+{
+	console.log('name privcay set');
+	console.log(user.cid);
+	console.log(user.lname);
+	console.log(user.flag_nameprivacy ? user.cid : user.lname);
+}
+
 		const userData = {
 			lname: (user.flag_nameprivacy) ? user.cid : user.lname,		
 		}
