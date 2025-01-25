@@ -99,9 +99,13 @@ const syncRoster = async () => {
 		const user = vatusaObject[cid];
 		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
 	}
+	console.log(`Synchronizing existing controller name privacy`);
 	for (const cid of vatusaControllers) {
 			const user = vatusaObject[cid];
-		await zabApi.post(`/controller/${user.cid}`, {lname: user.flag_nameprivacy ? `${user.cid}` : user.lname});	
+			const userData = {
+				lname: user.flag_nameprivacy ? `${user.cid}` : user.lname		
+			}
+		await zabApi.post(`/controller/${user.cid}`, userData);	
 	}
 	// Lets take the opportunity to do some DB cleanup
 
