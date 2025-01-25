@@ -100,7 +100,7 @@ const syncRoster = async () => {
 		await zabApi.put(`/controller/${user.cid}/rating`, {rating: user.rating});
 		
 		const userData = {
-			lname: (user.flag_nameprivacy===true) ? user.cid : user.lname,		
+			lname: (user.flag_nameprivacy) ? user.cid : user.lname,		
 		}
 		await zabApi.post(`/controller/${user.cid}`, userData);
 	}
