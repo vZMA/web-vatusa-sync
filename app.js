@@ -105,6 +105,7 @@ const syncRoster = async () => {
 			const userData = {
 				lname: user.flag_nameprivacy ? `${user.cid}` : user.lname		
 			}
+		console.log('Sending ', userData.lname);
 		await zabApi.post(`/controller/${user.cid}`, userData);	
 	}
 	// Lets take the opportunity to do some DB cleanup
